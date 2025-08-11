@@ -18,14 +18,16 @@ impl GameState {
             selected: (0, 0),
             field_states: [
                 [FieldState::None, FieldState::None, FieldState::None],
-                [FieldState::None, FieldState::None, FieldState::None],
-                [FieldState::None, FieldState::None, FieldState::None],
+                [FieldState::None, FieldState::Player1, FieldState::None],
+                [FieldState::Player2, FieldState::None, FieldState::None],
             ],
         }
     }
 
     fn draw(&mut self) {
         let offset = 50.0;
+        let inner_offset = 20.0;
+        let line_width = 5.0;
         let rec_width = (screen_width() - offset * 2.0) / 3.0 * screen_height() / screen_width();
         let rec_height = (screen_height() - offset * 2.0) / 3.0;
         let x_offset = (screen_width() - offset - rec_width * 3.0) / 2.0;
@@ -34,48 +36,60 @@ impl GameState {
         let line_color = WHITE;
         let (selected_x, selected_y) = self.selected;
 
-        //TODO make line color = background color when field selected
-        //TODO make background color = background color when field selected
-        //Daw Circle / X if fieldstate != none
-
         for (i, row) in self.field_states.iter().enumerate() {
             for (j, field) in row.iter().enumerate() {
-                match field {
-                    FieldState::None => {
-                        draw_rectangle_lines(
-                            (rec_width * j as f32) + x_offset,
-                            rec_height * i as f32 + y_offset,
-                            rec_width,
-                            rec_height,
-                            10.0,
-                            line_color,
-                        );
+                let x = (rec_width * j as f32) + x_offset;
+                let y = rec_height * i as f32 + y_offset;
+                let selected = selected_x == j as u32 && selected_y == i as u32;
+
+                //Reverse Colors For Selected Field
+                let (background_color, line_color) = if selected {
+                    (line_color, background_color)
+                } else {
+                    (background_color, line_color)
+                };
+
+                match selected {
+                    true => draw_rectangle(x, y, rec_width, rec_height, background_color),
+                    false => {
+                        draw_rectangle_lines(x, y, rec_width, rec_height, line_width, line_color)
                     }
+                }
+
+                match field {
                     FieldState::Player1 => {
-                        draw_rectangle_lines(
-                            (rec_width * j as f32) + x_offset,
-                            rec_height * i as f32 + y_offset,
-                            rec_width,
-                            rec_height,
-                            10.0,
+                        draw_circle_lines(
+                            x + rec_width * 0.5,
+                            y + rec_height * 0.5,
+                            rec_width / 2.0 - inner_offset,
+                            line_width,
                             line_color,
                         );
                     }
                     FieldState::Player2 => {
-                        draw_rectangle_lines(
-                            (rec_width * j as f32) + x_offset,
-                            rec_height * i as f32 + y_offset,
-                            rec_width,
-                            rec_height,
-                            10.0,
+                        draw_line(
+                            x + inner_offset / 2.0,
+                            y + inner_offset / 2.0,
+                            x + rec_width - inner_offset / 2.0,
+                            y + rec_height - inner_offset / 2.0,
+                            line_width,
+                            line_color,
+                        );
+                        draw_line(
+                            x + inner_offset / 2.0,
+                            y + rec_height - inner_offset / 2.0,
+                            x + rec_width - inner_offset / 2.0,
+                            y + inner_offset / 2.0,
+                            line_width,
                             line_color,
                         );
                     }
+                    _ => (),
                 }
             }
         }
 
-        //remove outer border
+        //Remove Outer Border
         draw_line(
             x_offset,
             y_offset,
@@ -109,6 +123,28 @@ impl GameState {
             background_color,
         );
     }
+
+    fn select_right(&mut self) {
+        let (x, y) = self.selected;
+        self.selected = if x < 2 { (x + 1, y) } else { (x, y) };
+    }
+
+    fn select_left(&mut self) {
+        let (x, y) = self.selected;
+        self.selected = if x > 0 { (x - 1, y) } else { (x, y) };
+    }
+
+    fn select_up(&mut self) {
+        let (x, y) = self.selected;
+        self.selected = if y > 0 { (x, y - 1) } else { (x, y) };
+    }
+
+    fn select_down(&mut self) {
+        let (x, y) = self.selected;
+        self.selected = if y < 2 { (x, y + 1) } else { (x, y) };
+    }
+
+    //TODO make auto brake
 }
 
 #[macroquad::main("BasicShapes")]
@@ -118,10 +154,19 @@ async fn main() {
     loop {
         game_state.draw();
 
+        if is_key_pressed(KeyCode::Right) {
+            game_state.select_right();
+        }
+        if is_key_pressed(KeyCode::Left) {
+            game_state.select_left();
+        }
+        if is_key_pressed(KeyCode::Up) {
+            game_state.select_up();
+        }
+        if is_key_pressed(KeyCode::Down) {
+            game_state.select_down();
+        }
+
         next_frame().await;
-        // draw_line(40.0, 40.0, 100.0, 200.0, 15.0, BLUE);
-        // draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
-        // draw_circle(screen_width() - 30.0, screen_height() - 30.0, 15.0, YELLOW);
-        // draw_text("HELLO", 20.0, 20.0, 20.0, DARKGRAY);
     }
 }
