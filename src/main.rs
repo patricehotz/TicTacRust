@@ -1,25 +1,39 @@
 use macroquad::prelude::*;
 
-#[derive(Debug)]
-enum FieldState {
+#[derive(Debug, Clone)]
+enum Player {
     Player1,
     Player2,
+}
+enum FieldState {
+    Player(Player),
     None,
 }
 
 struct GameState {
-    selected: (u32, u32),
+    current_player: Player,
     field_states: [[FieldState; 3]; 3],
+    selected: (usize, usize),
+}
+
+impl Player {
+    fn player_switch(&mut self) {
+        match self {
+            Player::Player1 => *self = Player::Player2,
+            Player::Player2 => *self = Player::Player1,
+        }
+    }
 }
 
 impl GameState {
-    fn default() -> GameState {
+    fn default() -> Self {
         GameState {
             selected: (0, 0),
+            current_player: Player::Player1,
             field_states: [
                 [FieldState::None, FieldState::None, FieldState::None],
-                [FieldState::None, FieldState::Player1, FieldState::None],
-                [FieldState::Player2, FieldState::None, FieldState::None],
+                [FieldState::None, FieldState::None, FieldState::None],
+                [FieldState::None, FieldState::None, FieldState::None],
             ],
         }
     }
@@ -40,7 +54,7 @@ impl GameState {
             for (j, field) in row.iter().enumerate() {
                 let x = (rec_width * j as f32) + x_offset;
                 let y = rec_height * i as f32 + y_offset;
-                let selected = selected_x == j as u32 && selected_y == i as u32;
+                let selected = selected_x == j && selected_y == i;
 
                 //Reverse Colors For Selected Field
                 let (background_color, line_color) = if selected {
@@ -57,7 +71,7 @@ impl GameState {
                 }
 
                 match field {
-                    FieldState::Player1 => {
+                    FieldState::Player(Player::Player2) => {
                         draw_circle_lines(
                             x + rec_width * 0.5,
                             y + rec_height * 0.5,
@@ -66,20 +80,20 @@ impl GameState {
                             line_color,
                         );
                     }
-                    FieldState::Player2 => {
+                    FieldState::Player(Player::Player1) => {
                         draw_line(
-                            x + inner_offset / 2.0,
-                            y + inner_offset / 2.0,
-                            x + rec_width - inner_offset / 2.0,
-                            y + rec_height - inner_offset / 2.0,
+                            x + inner_offset,
+                            y + inner_offset,
+                            x + rec_width - inner_offset,
+                            y + rec_height - inner_offset,
                             line_width,
                             line_color,
                         );
                         draw_line(
-                            x + inner_offset / 2.0,
-                            y + rec_height - inner_offset / 2.0,
-                            x + rec_width - inner_offset / 2.0,
-                            y + inner_offset / 2.0,
+                            x + inner_offset,
+                            y + rec_height - inner_offset,
+                            x + rec_width - inner_offset,
+                            y + inner_offset,
                             line_width,
                             line_color,
                         );
@@ -124,47 +138,78 @@ impl GameState {
         );
     }
 
-    fn select_right(&mut self) {
+    fn select_move_right(&mut self) {
         let (x, y) = self.selected;
-        self.selected = if x < 2 { (x + 1, y) } else { (x, y) };
+        self.selected = if x < 2 {
+            (x + 1, y)
+        } else {
+            self.seceted_move_pagebreake()
+        };
     }
 
-    fn select_left(&mut self) {
+    fn select_move_left(&mut self) {
         let (x, y) = self.selected;
-        self.selected = if x > 0 { (x - 1, y) } else { (x, y) };
+        self.selected = if x > 0 {
+            (x - 1, y)
+        } else {
+            self.seceted_move_pagebreake()
+        };
     }
 
-    fn select_up(&mut self) {
+    fn select_move_up(&mut self) {
         let (x, y) = self.selected;
         self.selected = if y > 0 { (x, y - 1) } else { (x, y) };
     }
 
-    fn select_down(&mut self) {
+    fn select_move_down(&mut self) {
         let (x, y) = self.selected;
         self.selected = if y < 2 { (x, y + 1) } else { (x, y) };
     }
 
-    //TODO make auto brake
+    fn seceted_move_pagebreake(&mut self) -> (usize, usize) {
+        let (x, y) = self.selected;
+        if x == 2 {
+            if y < 2 { (0, y + 1) } else { (x, y) }
+        } else {
+            if y > 0 { (2, y - 1) } else { (x, y) }
+        }
+    }
+
+    fn seceted_select(&mut self) {
+        let (x, y) = self.selected;
+
+        match self.field_states[y][x] {
+            FieldState::None => {
+                self.field_states[y][x] = FieldState::Player(self.current_player.clone());
+                self.current_player.player_switch();
+            }
+            _ => (),
+        }
+    }
 }
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
     let mut game_state = GameState::default();
 
+    //Game Loop
     loop {
         game_state.draw();
 
         if is_key_pressed(KeyCode::Right) {
-            game_state.select_right();
+            game_state.select_move_right();
         }
         if is_key_pressed(KeyCode::Left) {
-            game_state.select_left();
+            game_state.select_move_left();
         }
         if is_key_pressed(KeyCode::Up) {
-            game_state.select_up();
+            game_state.select_move_up();
         }
         if is_key_pressed(KeyCode::Down) {
-            game_state.select_down();
+            game_state.select_move_down();
+        }
+        if is_key_pressed(KeyCode::Enter) {
+            game_state.seceted_select();
         }
 
         next_frame().await;
