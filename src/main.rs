@@ -1,4 +1,4 @@
-use macroquad::prelude::*;
+use macroquad::{color::rgb_to_hsl, miniquad::log, prelude::*};
 
 #[derive(Debug, Clone)]
 enum Player {
@@ -14,7 +14,7 @@ struct GameState {
     current_player: Player,
     field_states: [[FieldState; 3]; 3],
     selected: (usize, usize),
-    finished: bool,
+    win: Option<((usize, usize), (usize, usize))>,
 }
 
 impl Player {
@@ -36,21 +36,26 @@ impl GameState {
                 [FieldState::None, FieldState::None, FieldState::None],
                 [FieldState::None, FieldState::None, FieldState::None],
             ],
-            finished: false,
+            win: None,
         }
     }
 
     fn draw(&mut self) {
         let offset = 50.0;
-        let inner_offset = 20.0;
-        let line_width = 5.0;
+        let inner_offset = 30.0;
+        let line_width = 10.0;
         let rec_width = (screen_width() - offset * 2.0) / 3.0 * screen_height() / screen_width();
         let rec_height = (screen_height() - offset * 2.0) / 3.0;
         let x_offset = (screen_width() - offset - rec_width * 3.0) / 2.0;
         let y_offset = offset;
-        let background_color = BLACK;
-        let line_color = WHITE;
+        let base_color = Color::from_rgba(36, 39, 58, 255);
+        let overlay_color = Color::from_rgba(128, 135, 162, 255);
+        let primary_color = Color::from_rgba(202, 211, 245, 255);
+        let player1_color = Color::from_rgba(198, 160, 246, 255);
+        let player2_color = Color::from_rgba(138, 173, 244, 255);
         let (selected_x, selected_y) = self.selected;
+
+        clear_background(Color::from_rgba(36, 39, 58, 1));
 
         for (i, row) in self.field_states.iter().enumerate() {
             for (j, field) in row.iter().enumerate() {
@@ -59,13 +64,13 @@ impl GameState {
                 let selected = selected_x == j && selected_y == i;
 
                 //Reverse Colors For Selected Field
-                let (background_color, line_color) = if selected {
-                    (line_color, background_color)
+                let (background_color, line_color) = if selected && !self.win.is_some() {
+                    (primary_color, base_color)
                 } else {
-                    (background_color, line_color)
+                    (base_color, primary_color)
                 };
 
-                match selected {
+                match selected && !self.win.is_some() {
                     true => draw_rectangle(x, y, rec_width, rec_height, background_color),
                     false => {
                         draw_rectangle_lines(x, y, rec_width, rec_height, line_width, line_color)
@@ -78,8 +83,8 @@ impl GameState {
                             x + rec_width * 0.5,
                             y + rec_height * 0.5,
                             rec_width / 2.0 - inner_offset,
-                            line_width,
-                            line_color,
+                            line_width * 2.0,
+                            player2_color,
                         );
                     }
                     FieldState::Player(Player::Player1) => {
@@ -88,19 +93,34 @@ impl GameState {
                             y + inner_offset,
                             x + rec_width - inner_offset,
                             y + rec_height - inner_offset,
-                            line_width,
-                            line_color,
+                            line_width * 2.0,
+                            player1_color,
                         );
                         draw_line(
                             x + inner_offset,
                             y + rec_height - inner_offset,
                             x + rec_width - inner_offset,
                             y + inner_offset,
-                            line_width,
-                            line_color,
+                            line_width * 2.0,
+                            player1_color,
                         );
                     }
                     _ => (),
+                }
+
+                match self.win {
+                    Some(winning_fields) => {
+                        let ((x1, y1), (x2, y2)) = winning_fields;
+                        draw_line(
+                            x1 as f32 * rec_width + x_offset + rec_width / 2.0,
+                            y1 as f32 * rec_height + y_offset + rec_height / 2.0,
+                            x2 as f32 * rec_width + x_offset + rec_width / 2.0,
+                            y2 as f32 * rec_height + y_offset + rec_height / 2.0,
+                            10.0,
+                            line_color,
+                        );
+                    }
+                    None => (),
                 }
             }
         }
@@ -112,7 +132,7 @@ impl GameState {
             x_offset,
             rec_height * 3.0 + y_offset,
             10.0,
-            background_color,
+            base_color,
         );
         draw_line(
             x_offset,
@@ -120,7 +140,7 @@ impl GameState {
             rec_width * 3.0 + x_offset,
             y_offset,
             10.0,
-            background_color,
+            base_color,
         );
         draw_line(
             rec_width * 3.0 + x_offset,
@@ -128,7 +148,7 @@ impl GameState {
             x_offset,
             rec_height * 3.0 + y_offset,
             10.0,
-            background_color,
+            base_color,
         );
         draw_line(
             rec_width * 3.0 + x_offset,
@@ -136,7 +156,7 @@ impl GameState {
             rec_width * 3.0 + x_offset,
             y_offset,
             10.0,
-            background_color,
+            base_color,
         );
     }
 
@@ -209,11 +229,12 @@ impl GameState {
                 }
                 FieldState::None => {}
             }
-        }
 
-        if count == 3 {
-            println!("win");
-            self.finished = true;
+            if count == 3 {
+                println!("win");
+                self.win = Some(((x, 0), (x, 2)));
+                return;
+            }
         }
 
         count = 0;
@@ -233,11 +254,15 @@ impl GameState {
                 }
                 FieldState::None => {}
             }
+            if count == 3 {
+                println!("win");
+                self.win = Some(((0, y), (2, y)));
+                return;
+            }
         }
 
         if count == 3 {
             println!("win");
-            self.finished = true;
         }
 
         count = 0;
@@ -258,12 +283,16 @@ impl GameState {
                     }
                     FieldState::None => {}
                 }
+                if count == 3 {
+                    println!("win");
+                    self.win = Some(((0, 0), (i, i)));
+                    return;
+                }
             }
         }
 
         if count == 3 {
             println!("win");
-            self.finished = true;
         }
 
         count = 0;
@@ -275,7 +304,6 @@ impl GameState {
                     FieldState::Player(Player::Player1) => {
                         if self.current_player.clone() as usize == Player::Player1 as usize {
                             count += 1;
-                            println!("{count}")
                         }
                     }
                     FieldState::Player(Player::Player2) => {
@@ -285,12 +313,13 @@ impl GameState {
                     }
                     FieldState::None => {}
                 }
-            }
-        }
 
-        if count == 3 {
-            println!("win");
-            self.finished = true;
+                if count == 3 {
+                    println!("win");
+                    self.win = Some(((0, i), (i, 0)));
+                    return;
+                }
+            }
         }
     }
 }
@@ -303,10 +332,10 @@ async fn main() {
     loop {
         game_state.draw();
 
-        if game_state.finished {
-            next_frame().await;
-            continue;
-        }
+        // if game_state.finished {
+        //     next_frame().await;
+        //     continue;
+        // }
 
         if is_key_pressed(KeyCode::Right) {
             game_state.select_move_right();
