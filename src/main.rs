@@ -14,6 +14,7 @@ struct GameState {
     current_player: Player,
     field_states: [[FieldState; 3]; 3],
     selected: (usize, usize),
+    finished: bool,
 }
 
 impl Player {
@@ -35,6 +36,7 @@ impl GameState {
                 [FieldState::None, FieldState::None, FieldState::None],
                 [FieldState::None, FieldState::None, FieldState::None],
             ],
+            finished: false,
         }
     }
 
@@ -188,7 +190,7 @@ impl GameState {
         }
     }
 
-    fn check_for_win(&self) {
+    fn check_for_win(&mut self) {
         let (x, y) = self.selected;
         let mut count = 0;
 
@@ -208,8 +210,10 @@ impl GameState {
                 FieldState::None => {}
             }
         }
+
         if count == 3 {
             println!("win");
+            self.finished = true;
         }
 
         count = 0;
@@ -230,8 +234,10 @@ impl GameState {
                 FieldState::None => {}
             }
         }
+
         if count == 3 {
             println!("win");
+            self.finished = true;
         }
 
         count = 0;
@@ -254,8 +260,10 @@ impl GameState {
                 }
             }
         }
+
         if count == 3 {
             println!("win");
+            self.finished = true;
         }
 
         count = 0;
@@ -282,6 +290,7 @@ impl GameState {
 
         if count == 3 {
             println!("win");
+            self.finished = true;
         }
     }
 }
@@ -293,6 +302,11 @@ async fn main() {
     //Game Loop
     loop {
         game_state.draw();
+
+        if game_state.finished {
+            next_frame().await;
+            continue;
+        }
 
         if is_key_pressed(KeyCode::Right) {
             game_state.select_move_right();
