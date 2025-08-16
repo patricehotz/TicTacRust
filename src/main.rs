@@ -181,9 +181,107 @@ impl GameState {
         match self.field_states[y][x] {
             FieldState::None => {
                 self.field_states[y][x] = FieldState::Player(self.current_player.clone());
+                self.check_for_win();
                 self.current_player.player_switch();
             }
             _ => (),
+        }
+    }
+
+    fn check_for_win(&self) {
+        let (x, y) = self.selected;
+        let mut count = 0;
+
+        //vertical
+        for i in 0..3 {
+            match self.field_states[i][x] {
+                FieldState::Player(Player::Player1) => {
+                    if self.current_player.clone() as usize == Player::Player1 as usize {
+                        count += 1;
+                    }
+                }
+                FieldState::Player(Player::Player2) => {
+                    if self.current_player.clone() as usize == Player::Player2 as usize {
+                        count += 1;
+                    }
+                }
+                FieldState::None => {}
+            }
+        }
+        if count == 3 {
+            println!("win");
+        }
+
+        count = 0;
+
+        //horizontal
+        for i in 0..3 {
+            match self.field_states[y][i] {
+                FieldState::Player(Player::Player1) => {
+                    if self.current_player.clone() as usize == Player::Player1 as usize {
+                        count += 1;
+                    }
+                }
+                FieldState::Player(Player::Player2) => {
+                    if self.current_player.clone() as usize == Player::Player2 as usize {
+                        count += 1;
+                    }
+                }
+                FieldState::None => {}
+            }
+        }
+        if count == 3 {
+            println!("win");
+        }
+
+        count = 0;
+
+        //0-0 -> 2-2 diagonal
+        if x == y {
+            for i in 0..3 {
+                match self.field_states[i][i] {
+                    FieldState::Player(Player::Player1) => {
+                        if self.current_player.clone() as usize == Player::Player1 as usize {
+                            count += 1;
+                        }
+                    }
+                    FieldState::Player(Player::Player2) => {
+                        if self.current_player.clone() as usize == Player::Player2 as usize {
+                            count += 1;
+                        }
+                    }
+                    FieldState::None => {}
+                }
+            }
+        }
+        if count == 3 {
+            println!("win");
+        }
+
+        count = 0;
+
+        //0-2 -> 2-0 diagonal
+        if y % 3 + x % 3 == 2 {
+            for i in 0..3 {
+                match self.field_states[2 - i][i] {
+                    FieldState::Player(Player::Player1) => {
+                        if self.current_player.clone() as usize == Player::Player1 as usize {
+                            count += 1;
+                            println!("{count}")
+                        }
+                    }
+                    FieldState::Player(Player::Player2) => {
+                        if self.current_player.clone() as usize == Player::Player2 as usize {
+                            count += 1;
+                        }
+                    }
+                    FieldState::None => {}
+                }
+            }
+        }
+
+        if count == 3 {
+            println!("win");
         }
     }
 }
