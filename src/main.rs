@@ -261,10 +261,6 @@ impl GameState {
             }
         }
 
-        if count == 3 {
-            println!("win");
-        }
-
         count = 0;
 
         //0-0 -> 2-2 diagonal
@@ -289,10 +285,6 @@ impl GameState {
                     return;
                 }
             }
-        }
-
-        if count == 3 {
-            println!("win");
         }
 
         count = 0;
@@ -324,33 +316,30 @@ impl GameState {
     }
 }
 
-#[macroquad::main("BasicShapes")]
+#[macroquad::main("Tic Tac Rust")]
 async fn main() {
     let mut game_state = GameState::default();
+    let mut key_down = false;
 
     //Game Loop
     loop {
         game_state.draw();
 
-        // if game_state.finished {
-        //     next_frame().await;
-        //     continue;
-        // }
+        if get_keys_released().len() > 0 {
+            key_down = false;
+        } else if !key_down {
+            for key in get_keys_down() {
+                key_down = true;
 
-        if is_key_pressed(KeyCode::Right) {
-            game_state.select_move_right();
-        }
-        if is_key_pressed(KeyCode::Left) {
-            game_state.select_move_left();
-        }
-        if is_key_pressed(KeyCode::Up) {
-            game_state.select_move_up();
-        }
-        if is_key_pressed(KeyCode::Down) {
-            game_state.select_move_down();
-        }
-        if is_key_pressed(KeyCode::Enter) {
-            game_state.seceted_select();
+                match key {
+                    KeyCode::Right | KeyCode::L => game_state.select_move_right(),
+                    KeyCode::Left | KeyCode::H => game_state.select_move_left(),
+                    KeyCode::Up | KeyCode::K => game_state.select_move_up(),
+                    KeyCode::Down | KeyCode::J => game_state.select_move_down(),
+                    KeyCode::Enter | KeyCode::I => game_state.seceted_select(),
+                    _ => (),
+                }
+            }
         }
 
         next_frame().await;
